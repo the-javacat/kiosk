@@ -1,7 +1,9 @@
 const express = require('express');
 const chokidar = require('chokidar');
+const WebSocket = require('ws');
 const path = require('path');
 const fs = require('fs');
+const { log } = require('console');
 
 const app = express();
 const imageFolder = path.join(__dirname, 'images'); // Folder containing the images
@@ -93,6 +95,18 @@ app.get('/', (req, res) => {
 
                     resetTimeout(); // Reset the timeout when manually changing image
                 }
+                
+                // Listen for server updates via WebSocket
+                const ws = new WebSocket('ws://' + window.location.host);
+                ws.onmessage = (event) => {
+                    console.log('Received update from server:', event.data);
+                    const updatedImages = JSON.parse(event.data);
+                    if (JSON.stringify(images) !== JSON.stringify(updatedImages)) {
+                        console.log('Updating image list');
+                        images.splice(0, images.length, ...updatedImages);
+                        currentIndex = 0; // Reset index to the first image
+                    }
+                };
 
                 // Keyboard controls for left and right arrow keys
                 document.addEventListener('keydown', (event) => {
@@ -126,15 +140,45 @@ app.get('/', (req, res) => {
     `);
 });
 
-// Watch for changes in the 'images' folder and reload the page when changes are detected
-chokidar.watch(imageFolder).on('all', (event, path) => {
-    console.log(`Chokidar detected event: ${event} on ${path}`);
-    if (event === 'add' || event === 'unlink') {
-        console.log('Images have been updated, refreshing the slideshow...');
-        // You can use socket.io or similar to notify the client about updates
-    }
+// WebSocket Server
+const wss = new WebSocket.Server({ noServer: true });
+
+
+const server = app.listen(port, () => {
+    console.log(`Server running on http://localhost:${port}`);
 });
 
-app.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}`);
+server.on('upgrade', (request, socket, head) => {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit('connection', ws, request);
+    });
+});
+
+wss.on('connection', (ws) => {
+    console.log('Client connected to WebSocket');
+
+    ws.on('close', () => {
+        console.log('Client disconnected');
+    });
+});
+
+// Watch for changes in the 'images' folder
+const watcher = chokidar.watch(imageFolder);
+
+watcher.on('all', (event, filepath) => {
+    if (['add', 'unlink'].includes(event)) {
+        console.log(`File ${event}: ${filepath}`);
+        const updatedImages = fs.readdirSync(imageFolder).filter(file => /\.(jpg|jpeg|png|gif|webp)$/i.test(file));
+        const payload = JSON.stringify(updatedImages);
+
+        wss.clients.forEach(client => {
+            console.log("socket not opened");
+            
+            if (client.readyState === WebSocket.OPEN) {
+                console.log("hi");
+                
+                client.send(payload);
+            }
+        });
+    }
 });
