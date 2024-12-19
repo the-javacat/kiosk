@@ -1,30 +1,32 @@
-const express = require('express');
-const chokidar = require('chokidar');
-const WebSocket = require('ws');
-const path = require('path');
-const fs = require('fs');
-const { log } = require('console');
+const express = require("express");
+const chokidar = require("chokidar");
+const WebSocket = require("ws");
+const path = require("path");
+const fs = require("fs");
+const { log } = require("console");
 
 const app = express();
-const imageFolder = path.join(__dirname, 'images'); // Folder containing the images
+const imageFolder = path.join(__dirname, "images"); // Folder containing the images
 const port = 3000;
 const initialRandom = true; // Set this to `true` for random image display, `false` for sequential order
 
 // Serve static files (images) from the 'images' folder
-app.use('/images', express.static(imageFolder));
+app.use("/images", express.static(imageFolder));
 
 // Serve the HTML page at the root route
-app.get('/', (req, res) => {
-    const images = fs.readdirSync(imageFolder).filter(file => /\.(jpg|jpeg|png|gif|webp)$/i.test(file));
+app.get("/", (req, res) => {
+  const images = fs
+    .readdirSync(imageFolder)
+    .filter((file) => /\.(jpg|jpeg|png|gif|webp)$/i.test(file));
 
-    console.log('Serving slideshow page');
-    console.log('Available images: ', images); // Log available images
+  console.log("Serving slideshow page");
+  console.log("Available images: ", images); // Log available images
 
-    if (images.length === 0) {
-        console.log('No images found in the folder!');
-    }
+  if (images.length === 0) {
+    console.log("No images found in the folder!");
+  }
 
-    res.send(`
+  res.send(`
         <!DOCTYPE html>
         <html lang="en">
         <head>
@@ -32,13 +34,21 @@ app.get('/', (req, res) => {
             <meta name="viewport" content="width=device-width, initial-scale=1.0">
             <title>Slideshow</title>
             <style>
-                body { margin: 0; padding: 0; height: 100vh; overflow: hidden; }
-                .slideshow-container { 
-                    display: flex; 
-                    justify-content: center; 
-                    align-items: center; 
-                    height: 100vh; 
+                body {
+                    margin: 0;
+                    padding: 0;
+                    height: 100vh;
+                    overflow: hidden;
+                    background-color: black; /* Set background color to black */
+                }
+
+                .slideshow-container {
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    height: 100vh;
                     position: relative;
+                    background-color: black; /* Set background color to black */
                 }
                 img { 
                     position: absolute; 
@@ -143,42 +153,43 @@ app.get('/', (req, res) => {
 // WebSocket Server
 const wss = new WebSocket.Server({ noServer: true });
 
-
 const server = app.listen(port, () => {
-    console.log(`Server running on http://localhost:${port}`);
+  console.log(`Server running on http://localhost:${port}`);
 });
 
-server.on('upgrade', (request, socket, head) => {
-    wss.handleUpgrade(request, socket, head, (ws) => {
-        wss.emit('connection', ws, request);
-    });
+server.on("upgrade", (request, socket, head) => {
+  wss.handleUpgrade(request, socket, head, (ws) => {
+    wss.emit("connection", ws, request);
+  });
 });
 
-wss.on('connection', (ws) => {
-    console.log('Client connected to WebSocket');
+wss.on("connection", (ws) => {
+  console.log("Client connected to WebSocket");
 
-    ws.on('close', () => {
-        console.log('Client disconnected');
-    });
+  ws.on("close", () => {
+    console.log("Client disconnected");
+  });
 });
 
 // Watch for changes in the 'images' folder
 const watcher = chokidar.watch(imageFolder);
 
-watcher.on('all', (event, filepath) => {
-    if (['add', 'unlink'].includes(event)) {
-        console.log(`File ${event}: ${filepath}`);
-        const updatedImages = fs.readdirSync(imageFolder).filter(file => /\.(jpg|jpeg|png|gif|webp)$/i.test(file));
-        const payload = JSON.stringify(updatedImages);
+watcher.on("all", (event, filepath) => {
+  if (["add", "unlink"].includes(event)) {
+    console.log(`File ${event}: ${filepath}`);
+    const updatedImages = fs
+      .readdirSync(imageFolder)
+      .filter((file) => /\.(jpg|jpeg|png|gif|webp)$/i.test(file));
+    const payload = JSON.stringify(updatedImages);
 
-        wss.clients.forEach(client => {
-            console.log("socket not opened");
-            
-            if (client.readyState === WebSocket.OPEN) {
-                console.log("hi");
-                
-                client.send(payload);
-            }
-        });
-    }
+    wss.clients.forEach((client) => {
+      console.log("socket not opened");
+
+      if (client.readyState === WebSocket.OPEN) {
+        console.log("hi");
+
+        client.send(payload);
+      }
+    });
+  }
 });
