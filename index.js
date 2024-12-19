@@ -114,11 +114,11 @@ app.get('/', (req, res) => {
                 // Reset the timeout on manual image change
                 function resetTimeout() {
                     clearTimeout(slideTimeout);
-                    slideTimeout = setTimeout(changeImage, 3000); // Reset to 3 seconds after manual change
+                    slideTimeout = setTimeout(changeImage, 15000); // Reset to 3 seconds after manual change
                 }
 
                 // Set the interval for automatic image change
-                slideTimeout = setTimeout(changeImage, 3000);
+                slideTimeout = setTimeout(changeImage, 15000);
 
             </script>
         </body>
