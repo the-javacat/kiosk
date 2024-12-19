@@ -2,11 +2,12 @@
   "name": "newfolder",
   "packageManager": "yarn@4.5.3",
   "scripts": {
-    "start": "node index.js"
+    "start": "pm2 start index.js"
   },
   "dependencies": {
     "chokidar": "^4.0.3",
     "express": "^4.21.2",
+    "pm2": "^5.4.3",
     "ws": "^8.18.0"
   }
 }
